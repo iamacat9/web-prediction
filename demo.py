@@ -1,6 +1,6 @@
 '''
 author: Xiaoli Shang
-web: https://github.com/iamacat9/webprediction
+web: https://github.com/iamacat9/web-prediction
 license: CC0 1.0 Universal (free to use, no warranties)
 
 This code sample is a bare bones demo of the following workflow:
