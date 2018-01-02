@@ -7,7 +7,6 @@ This code sample is a bare bones demo of the following workflow:
 
 1. load a training dataset
 2. train a classifier with your favorite algorithm
-  (optional) do this in parallel when the training set is large
 3. launch a RESTful web service to apply the trained model to future test data
 
 This is a simple way of integrating a prediction module into a larger web-based analytics platform
@@ -105,71 +104,11 @@ def train_model(tr_data, tr_label):
     
     # here we use logistic regression from the sklearn library
     from sklearn.linear_model import LogisticRegression
-    mdl = LogisticRegression(penalty='l2')
+    mdl = LogisticRegression()
     mdl.fit(tr_data, tr_label)
     
     return mdl
 
-# partition the training set into n_child chunks and train n_child models in parallel
-def train_model_parallel(tr_data, tr_label, n_child):
-    
-    from multiprocessing import Process, Queue
-    
-    # set number of jobs
-    try:
-        n_child = max(2, int(n_child))
-    except ValueError:
-        n_child = 2
-    print 'parallelization with %i jobs' % n_child
-    
-    N = tr_data.shape[0] # number of training instances
-    chunk_size = int(numpy.ceil(N/n_child))
-    idx = numpy.random.permutation(N) # random permutation to create random samples
-    
-    result_q = Queue() # collect results
-    process_list = []
-    for i in xrange(n_child):
-        n1 = i * chunk_size
-        n2 = min((i+1) * chunk_size, N)
-        # pass in a chunk of data and their labels
-        p = Process(target=train_model_child, \
-                    args=(result_q, tr_data[idx[n1:n2],:], tr_label[idx[n1:n2]]))
-        process_list.append(p)
-    
-    # dispatch and sync
-    for p in process_list:
-        p.start()
-    for p in process_list:
-        p.join()
-    
-    # ensemble n_child different models
-    mdl = model_ensemble(result_q)
-    
-    return mdl
-
-# train a model on each chunk of data
-def train_model_child(result_q, tr_data, tr_label):
-    
-    mdl_c = train_model(tr_data, tr_label) # train the model using existing function
-    result_q.put(mdl_c) # put the trained model into the queue
-
-# ensemble all models in result_q into one
-def model_ensemble(result_q):
-    
-    # simple model averaging for logistic regression
-    
-    mdl = result_q.get()
-    cnt = 1
-    while not result_q.empty():
-        mdl_c = result_q.get()
-        mdl.coef_ += mdl_c.coef_
-        mdl.intercept_ += mdl_c.intercept_
-        cnt += 1
-    
-    mdl.coef_ /= cnt
-    mdl.intercept_ /= cnt
-    
-    return mdl    
 
 if __name__ == '__main__':
     
@@ -180,8 +119,7 @@ if __name__ == '__main__':
         tr_data, tr_label, fea_list = generate_dataset()
         
     # train model
-    #mdl = train_model(tr_data, tr_label)
-    mdl = train_model_parallel(tr_data, tr_label, n_child=2)
+    mdl = train_model(tr_data, tr_label)
     
     # define url structure
     urls = (
